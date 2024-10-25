@@ -68,9 +68,14 @@ func generatePowerpoint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	generatedSlides := generateSlidesFromMarkdownContent(content)
-	err = slides.GeneratePPTXFromSlides(generatedSlides, "slides/template2.pptx", "slides/output2.pptx")
+	outputPath := "slides/output2.pptx"
+	err = slides.GeneratePPTXFromSlides(generatedSlides, "slides/template2.pptx", outputPath)
 	if err != nil {
-		fmt.Println(err)
+		http.Error(w, "Error generating PowerPoint file", http.StatusInternalServerError)
+		return
 	}
 
+	w.Header().Set("Content-Disposition", "attachment; filename=output.pptx")
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+	http.ServeFile(w, r, outputPath)
 }
