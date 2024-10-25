@@ -19,4 +19,8 @@ Using Go's library of Markdown parser's, we can parse the markdown and generate 
 
 ## Compare this Slide to the Source!
 
+Let's compare it to the source
+
 ### It works!
+
+See how we did.

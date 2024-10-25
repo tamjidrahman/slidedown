@@ -7,6 +7,8 @@ require (
 	github.com/tamjidrahman/slidedown/slides v0.0.0-00010101000000-000000000000
 )
 
+require github.com/unidoc/unioffice v1.37.0 // indirect
+
 replace github.com/tamjidrahman/slides => /slides
 
 replace github.com/tamjidrahman/slidedown/slides => ./slides

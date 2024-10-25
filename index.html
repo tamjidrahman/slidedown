@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Slidedown Editor</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        box-sizing: border-box;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .container {
+        display: flex;
+        flex: 1;
+        gap: 20px;
+      }
+      #editor,
+      #output {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        overflow-y: auto;
+      }
+      #editor {
+        resize: none;
+      }
+      #generatePowerpoint {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #generatePowerpoint:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Simple Slidedown Editor</h1>
+    <div class="container">
+      <textarea
+        id="editor"
+        placeholder="Enter your markdown here..."
+      ></textarea>
+      <div id="output"></div>
+    </div>
+    <button id="generatePowerpoint">Generate PowerPoint</button>
+    <script>
+      const editor = document.getElementById("editor");
+      const output = document.getElementById("output");
+      const generatePowerpoint = document.getElementById("generatePowerpoint");
+
+      editor.addEventListener("input", async () => {
+        const response = await fetch("/generate-slides", {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain",
+          },
+          body: editor.value,
+        });
+        const slides = await response.text();
+        output.innerHTML = slides.replace(/\n/g, "<br>");
+      });
+
+      async function handleGeneratePowerpoint() {
+        try {
+          const response = await fetch("/generate-pptx", {
+            method: "POST",
+            headers: {
+              "Content-Type": "text/plain",
+            },
+            body: editor.value,
+          });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = url;
+            a.download = "presentation.pptx";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+          } else {
+            alert("Failed to generate PowerPoint. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error generating PowerPoint:", error);
+          alert(
+            "An error occurred while generating PowerPoint. Please try again.",
+          );
+        }
+      }
+
+      generatePowerpoint.addEventListener("click", handleGeneratePowerpoint);
+    </script>
+  </body>
+</html>
