@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-type Layout int
+type Layout string
 
 const (
-	LayoutBody Layout = iota
-	LayoutTitle
-	LayoutSection
+	LayoutBody    Layout = "Body"
+	LayoutTitle   Layout = "Title"
+	LayoutSection Layout = "Section"
 )
 
 type GenerateConfig struct {
@@ -71,6 +71,30 @@ func createUntitledParagraph() *Paragraph {
 	}
 }
 
+func (slide *Slide) String() string {
+	var result strings.Builder
+
+	result.WriteString(fmt.Sprintf("[%s] (%s)\n", slide.Title, slide.Layout))
+	if len(slide.Paragraphs) > 0 {
+		for k, paragraph := range slide.Paragraphs {
+			result.WriteString(fmt.Sprintf("  Paragraph %d:\n", k+1))
+			if paragraph.Header != "" {
+				result.WriteString(fmt.Sprintf("    Header: %s\n", paragraph.Header))
+			}
+			if paragraph.Image != "" {
+				result.WriteString(fmt.Sprintf("    Image: %s\n", paragraph.Image))
+			}
+			if paragraph.Text != "" {
+				result.WriteString(fmt.Sprintf("    Text: %s\n", paragraph.Text))
+			}
+		}
+	} else {
+		result.WriteString("  No paragraphs\n")
+	}
+
+	return result.String()
+}
+
 func (slides *Slides) String() string {
 	var result strings.Builder
 
@@ -79,39 +103,21 @@ func (slides *Slides) String() string {
 	for i, section := range slides.Sections {
 		result.WriteString(fmt.Sprintf("Section %d: %s\n", i+1, section.Title))
 		for _, slide := range section.Slides {
-			result.WriteString(fmt.Sprintf("  Slide %d: [%s] (%s)\n", slideCount, slide.Title, layoutToString(slide.Layout)))
+			result.WriteString(fmt.Sprintf("  Slide %d: %s", slideCount, slide.String()))
 			slideCount++
-			if len(slide.Paragraphs) > 0 {
-				for k, paragraph := range slide.Paragraphs {
-					result.WriteString(fmt.Sprintf("    Paragraph %d:\n", k+1))
-					if paragraph.Header != "" {
-						result.WriteString(fmt.Sprintf("      Header: %s\n", paragraph.Header))
-					}
-					if paragraph.Image != "" {
-						result.WriteString(fmt.Sprintf("      Image: %s\n", paragraph.Image))
-					}
-					if paragraph.Text != "" {
-						result.WriteString(fmt.Sprintf("      Text: %s\n", paragraph.Text))
-					}
-				}
-			} else {
-				result.WriteString("    No paragraphs\n")
-			}
 		}
 	}
 
 	return result.String()
 }
 
-func layoutToString(layout Layout) string {
-	switch layout {
-	case LayoutBody:
-		return "Body"
-	case LayoutTitle:
-		return "Title"
-	case LayoutSection:
-		return "Section"
-	default:
-		return "Unknown"
+func (slides *Slides) FlattenToSlides() []*Slide {
+	var flattenedSlides []*Slide
+	// Iterate through sections and their slides
+	for _, section := range slides.Sections {
+		// Add all slides in the section
+		flattenedSlides = append(flattenedSlides, section.Slides...)
 	}
+
+	return flattenedSlides
 }

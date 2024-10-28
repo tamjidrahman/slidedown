@@ -38,6 +38,7 @@ func generateSlides(w http.ResponseWriter, r *http.Request) {
 	var requestBody struct {
 		Content string                `json:"content"`
 		Config  slides.GenerateConfig `json:"config,omitempty"`
+		Debug   bool                  `json:"debug"`
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&requestBody)
@@ -62,7 +63,15 @@ func generateSlides(w http.ResponseWriter, r *http.Request) {
 
 	generatedSlides := generateSlidesFromMarkdownContent([]byte(requestBody.Content), config)
 
-	json.NewEncoder(w).Encode(generatedSlides)
+	response := map[string]interface{}{
+		"slides": generatedSlides.FlattenToSlides(),
+	}
+
+	if requestBody.Debug {
+		response["debug"] = generatedSlides
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 func generatePowerpoint(w http.ResponseWriter, r *http.Request) {

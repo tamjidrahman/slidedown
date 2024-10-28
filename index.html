@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Simple Slidedown Editor</title>
+    <title>Slidedown</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -31,6 +31,44 @@
         border: 1px solid #ccc;
         border-radius: 4px;
         overflow-y: auto;
+      }
+      .slide-card {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 15px;
+      }
+      .slide-card h3 {
+        margin-top: 0;
+      }
+      .slide-card p {
+        margin: 5px 0;
+      }
+      .slide-card .layout {
+        font-style: italic;
+        color: #666;
+      }
+      .slide-card.title {
+        background-color: #e6f3ff;
+        border-color: #4a90e2;
+      }
+      .slide-card.title h3 {
+        color: #4a90e2;
+        font-size: 1.5em;
+      }
+      .slide-card.section {
+        background-color: #fff0e6;
+        border-color: #ff9933;
+      }
+      .slide-card.section h3 {
+        color: #ff9933;
+        font-size: 1.3em;
+      }
+      .slide-card.body {
+        background-color: #f9f9f9;
+      }
+      .slide-card.body h3 {
+        color: #333;
       }
       #editor {
         resize: none;
@@ -68,7 +106,7 @@
     </style>
   </head>
   <body>
-    <h1>Simple Slidedown Editor</h1>
+    <h1>Slidedown Editor</h1>
     <div id="settings">
       <h2>Settings</h2>
       <div>
@@ -95,6 +133,10 @@
         <label for="createSectionTitleSlide">Create Section Title Slide:</label>
         <input type="checkbox" id="createSectionTitleSlide" checked />
       </div>
+      <div>
+        <label for="debugMode">Debug Mode:</label>
+        <input type="checkbox" id="debugMode" />
+      </div>
     </div>
     <div class="container">
       <textarea
@@ -108,14 +150,6 @@
       const editor = document.getElementById("editor");
       const output = document.getElementById("output");
       const generatePowerpoint = document.getElementById("generatePowerpoint");
-
-      function debounce(func, delay) {
-        let timeoutId;
-        return function (...args) {
-          clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => func.apply(this, args), delay);
-        };
-      }
 
       function getConfig() {
         return {
@@ -134,7 +168,29 @@
         };
       }
 
+      function renderSlidesAsCards(slides) {
+        return slides
+          .map(
+            (slide, index) => `
+          <div class="slide-card ${slide.Layout.toLowerCase()}">
+            <h3>${slide.Title}</h3>
+            <p class="layout">Layout: ${slide.Layout}</p>
+            ${slide.Paragraphs.map(
+              (para) => `
+              <p><strong>${para.Header}</strong></p>
+              <p>${para.Text}</p>
+              ${para.Image ? `<img src="${para.Image}" alt="Slide image">` : ""}
+            `,
+            ).join("")}
+          </div>
+        `,
+          )
+          .join("");
+      }
+
       async function updateSlides() {
+        const config = getConfig();
+        const debug = document.getElementById("debugMode").checked;
         const response = await fetch("/generate-slides", {
           method: "POST",
           headers: {
@@ -142,19 +198,20 @@
           },
           body: JSON.stringify({
             content: editor.value,
-            config: getConfig(),
+            config: config,
+            debug: debug,
           }),
         });
-        const slides = await response.json();
-        output.innerHTML = JSON.stringify(slides, null, 2).replace(
-          /\n/g,
-          "<br>",
-        );
+        const data = await response.json();
+        if (debug) {
+          output.innerHTML = `<pre>${JSON.stringify(data.debug, null, 2)}</pre>`;
+        } else {
+          const slides = data.slides;
+          output.innerHTML = renderSlidesAsCards(slides);
+        }
       }
 
-      const debouncedUpdateSlides = debounce(updateSlides, 300);
-
-      editor.addEventListener("input", debouncedUpdateSlides);
+      editor.addEventListener("input", updateSlides);
 
       // Add event listeners to all setting inputs
       const settingInputs = document.querySelectorAll("#settings input");
