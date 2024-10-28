@@ -14,7 +14,8 @@
         height: 100vh;
         box-sizing: border-box;
       }
-      h1 {
+      h1,
+      h2 {
         text-align: center;
         margin-bottom: 20px;
       }
@@ -47,10 +48,54 @@
       #generatePowerpoint:hover {
         background-color: #45a049;
       }
+      #settings {
+        background-color: #f0f0f0;
+        padding: 20px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+      }
+      #settings label {
+        display: inline-block;
+        width: 150px;
+        margin-bottom: 10px;
+      }
+      #settings input[type="number"] {
+        width: 50px;
+      }
+      #settings input[type="checkbox"] {
+        margin-right: 5px;
+      }
     </style>
   </head>
   <body>
     <h1>Simple Slidedown Editor</h1>
+    <div id="settings">
+      <h2>Settings</h2>
+      <div>
+        <label for="titleHeader">Title Header Level:</label>
+        <input type="number" id="titleHeader" value="1" min="1" max="6" />
+      </div>
+      <div>
+        <label for="sectionHeader">Section Header Level:</label>
+        <input type="number" id="sectionHeader" value="2" min="1" max="6" />
+      </div>
+      <div>
+        <label for="slideHeader">Slide Header Level:</label>
+        <input type="number" id="slideHeader" value="3" min="1" max="6" />
+      </div>
+      <div>
+        <label for="paragraphHeader">Paragraph Header Level:</label>
+        <input type="number" id="paragraphHeader" value="4" min="1" max="6" />
+      </div>
+      <div>
+        <label for="createTitleSlide">Create Title Slide:</label>
+        <input type="checkbox" id="createTitleSlide" checked />
+      </div>
+      <div>
+        <label for="createSectionTitleSlide">Create Section Title Slide:</label>
+        <input type="checkbox" id="createSectionTitleSlide" checked />
+      </div>
+    </div>
     <div class="container">
       <textarea
         id="editor"
@@ -64,16 +109,57 @@
       const output = document.getElementById("output");
       const generatePowerpoint = document.getElementById("generatePowerpoint");
 
-      editor.addEventListener("input", async () => {
+      function debounce(func, delay) {
+        let timeoutId;
+        return function (...args) {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+      }
+
+      function getConfig() {
+        return {
+          headerMapping: {
+            title: parseInt(document.getElementById("titleHeader").value),
+            section: parseInt(document.getElementById("sectionHeader").value),
+            slide: parseInt(document.getElementById("slideHeader").value),
+            paragraph: parseInt(
+              document.getElementById("paragraphHeader").value,
+            ),
+          },
+          createTitleSlide: document.getElementById("createTitleSlide").checked,
+          createSectionTitleSlide: document.getElementById(
+            "createSectionTitleSlide",
+          ).checked,
+        };
+      }
+
+      async function updateSlides() {
         const response = await fetch("/generate-slides", {
           method: "POST",
           headers: {
-            "Content-Type": "text/plain",
+            "Content-Type": "application/json",
           },
-          body: editor.value,
+          body: JSON.stringify({
+            content: editor.value,
+            config: getConfig(),
+          }),
         });
-        const slides = await response.text();
-        output.innerHTML = slides.replace(/\n/g, "<br>");
+        const slides = await response.json();
+        output.innerHTML = JSON.stringify(slides, null, 2).replace(
+          /\n/g,
+          "<br>",
+        );
+      }
+
+      const debouncedUpdateSlides = debounce(updateSlides, 300);
+
+      editor.addEventListener("input", debouncedUpdateSlides);
+
+      // Add event listeners to all setting inputs
+      const settingInputs = document.querySelectorAll("#settings input");
+      settingInputs.forEach((input) => {
+        input.addEventListener("change", updateSlides);
       });
 
       async function handleGeneratePowerpoint() {
@@ -81,9 +167,12 @@
           const response = await fetch("/generate-pptx", {
             method: "POST",
             headers: {
-              "Content-Type": "text/plain",
+              "Content-Type": "application/json",
             },
-            body: editor.value,
+            body: JSON.stringify({
+              content: editor.value,
+              config: getConfig(),
+            }),
           });
 
           if (response.ok) {

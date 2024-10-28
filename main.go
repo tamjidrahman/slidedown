@@ -1,8 +1,8 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/gomarkdown/markdown/parser"
@@ -22,20 +22,11 @@ func serveHTML(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "index.html")
 }
 
-func generateSlidesFromMarkdownContent(content []byte) *slides.Slides {
+func generateSlidesFromMarkdownContent(content []byte, config slides.GenerateConfig) *slides.Slides {
 	extensions := parser.CommonExtensions | parser.AutoHeadingIDs | parser.NoEmptyLineBeforeBlock
 	parser := parser.NewWithExtensions(extensions)
 	root := parser.Parse(content)
-	return slides.GenerateSlidesFromMarkdownAST(root, slides.GenerateConfig{
-		HeaderMapping: slides.HeaderMapping{
-			Title:     1,
-			Section:   2,
-			Slide:     3,
-			Paragraph: 4,
-		},
-		CreateTitleSlide:        true,
-		CreateSectionTitleSlide: true,
-	})
+	return slides.GenerateSlidesFromMarkdownAST(root, config)
 }
 
 func generateSlides(w http.ResponseWriter, r *http.Request) {
@@ -44,15 +35,34 @@ func generateSlides(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := io.ReadAll(r.Body)
+	var requestBody struct {
+		Content string                `json:"content"`
+		Config  slides.GenerateConfig `json:"config,omitempty"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&requestBody)
 	if err != nil {
-		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		http.Error(w, "Error decoding request body", http.StatusBadRequest)
 		return
 	}
 
-	generatedSlides := generateSlidesFromMarkdownContent(content)
+	config := requestBody.Config
+	if config.HeaderMapping == (slides.HeaderMapping{}) {
+		config = slides.GenerateConfig{
+			HeaderMapping: slides.HeaderMapping{
+				Title:     1,
+				Section:   2,
+				Slide:     3,
+				Paragraph: 4,
+			},
+			CreateTitleSlide:        true,
+			CreateSectionTitleSlide: true,
+		}
+	}
 
-	fmt.Fprint(w, generatedSlides)
+	generatedSlides := generateSlidesFromMarkdownContent([]byte(requestBody.Content), config)
+
+	json.NewEncoder(w).Encode(generatedSlides)
 }
 
 func generatePowerpoint(w http.ResponseWriter, r *http.Request) {
@@ -61,13 +71,32 @@ func generatePowerpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := io.ReadAll(r.Body)
+	var requestBody struct {
+		Content string                `json:"content"`
+		Config  slides.GenerateConfig `json:"config,omitempty"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&requestBody)
 	if err != nil {
-		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		http.Error(w, "Error decoding request body", http.StatusBadRequest)
 		return
 	}
 
-	generatedSlides := generateSlidesFromMarkdownContent(content)
+	config := requestBody.Config
+	if config.HeaderMapping == (slides.HeaderMapping{}) {
+		config = slides.GenerateConfig{
+			HeaderMapping: slides.HeaderMapping{
+				Title:     1,
+				Section:   2,
+				Slide:     3,
+				Paragraph: 4,
+			},
+			CreateTitleSlide:        true,
+			CreateSectionTitleSlide: true,
+		}
+	}
+
+	generatedSlides := generateSlidesFromMarkdownContent([]byte(requestBody.Content), config)
 	outputPath := "slides/output2.pptx"
 	err = slides.GeneratePPTXFromSlides(generatedSlides, "slides/template2.pptx", outputPath)
 	if err != nil {
